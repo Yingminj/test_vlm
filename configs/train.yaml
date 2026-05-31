@@ -19,13 +19,14 @@ train:
   output_dir: "runs/verifier"
   epochs: 2.0
   lr: 1.0e-4
-  batch_size: 2
-  grad_accum: 8
+  batch_size: 1          # validated on 48GB 4090: batch1 + 6 frames -> ~16GB peak
+  grad_accum: 16         # effective batch 16
   warmup_ratio: 0.03
   timing_upweight: 1.0
   max_length: 8192
   save_steps: 200
   logging_steps: 10
+  max_steps: 0           # >0 caps steps for smoke runs
   seed: 0
 
 stages:

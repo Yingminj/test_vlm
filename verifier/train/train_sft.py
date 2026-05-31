@@ -31,6 +31,7 @@ class TrainArgs:
     max_length: int = 8192
     save_steps: int = 200
     logging_steps: int = 10
+    max_steps: int = 0             # >0 caps steps (smoke runs); 0 = full epochs
     seed: int = 0
 
 
@@ -68,6 +69,9 @@ def main() -> None:
     mcfg = ModelConfig(**model_raw)
     processor = load_processor(mcfg)
     model = load_model(mcfg, for_training=True)
+    # memory: checkpointing + no kv-cache during training (see 48GB-4090 notes)
+    model.config.use_cache = False
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
     train = read_samples(targs.train_jsonl)
     train = _oversample_transitions(train, targs.timing_upweight, targs.seed)
@@ -78,6 +82,7 @@ def main() -> None:
     targ = TrainingArguments(
         output_dir=targs.output_dir,
         num_train_epochs=targs.epochs,
+        max_steps=targs.max_steps if targs.max_steps > 0 else -1,
         per_device_train_batch_size=targs.batch_size,
         per_device_eval_batch_size=targs.batch_size,
         gradient_accumulation_steps=targs.grad_accum,
@@ -88,7 +93,7 @@ def main() -> None:
         save_steps=targs.save_steps,
         eval_strategy="steps" if val else "no",
         eval_steps=targs.save_steps,
-        gradient_checkpointing=True,
+        # checkpointing enabled on the model above (use_reentrant=False)
         report_to=[],
         remove_unused_columns=False,
         seed=targs.seed,
