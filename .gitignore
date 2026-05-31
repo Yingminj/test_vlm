@@ -5,10 +5,10 @@ __pycache__/
 .venv/
 venv/
 
-# data + run artifacts
-data/
-runs/
-*.jsonl
+# data + run artifacts (anchored to repo root so verifier/data/ is NOT ignored)
+/data/
+/runs/
+/*.jsonl
 !configs/*.yaml
 *.pt
 *.bin
