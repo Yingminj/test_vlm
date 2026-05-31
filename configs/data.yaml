@@ -1,0 +1,12 @@
+# Reference config for the data build (verifier/data/build_dataset.py).
+# (build_dataset reads CLI flags; this documents recommended defaults.)
+demos: "data/demos.jsonl"
+out: "data/processed"
+seed: 0
+failures_per_success: 1        # procedural perturbations per successful demo
+semantic_mismatch_per_demo: 1  # I-FailSense relabeling negatives
+window: 16                     # frames per verification window
+stride: 1                      # sample every Nth frame as a check
+max_frames_per_demo: 64        # cap checks per demo (subsamples plateaus)
+ongoing_ratio: 2.0             # max n_ongoing / n_non_ongoing in TRAIN
+val_fraction: 0.1              # split by root demo id (no leakage)

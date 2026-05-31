@@ -1,0 +1,21 @@
+# Core data/eval/test deps (CPU-only, needed to run the pipeline + tests)
+pyyaml>=6.0
+pillow>=10.0
+pytest>=7.4
+
+# Training / inference deps (GPU). Pin transformers to a version with
+# Qwen2.5-VL support. Install on the training server.
+torch>=2.3
+transformers>=4.49.0
+accelerate>=0.34
+peft>=0.13
+bitsandbytes>=0.43        # 4-bit quant (Linux/CUDA)
+qwen-vl-utils>=0.0.8
+datasets>=2.20
+
+# Optional
+decord>=0.6.0             # faster frame extraction (else falls back to opencv)
+opencv-python>=4.9        # frame extraction fallback
+lm-format-enforcer>=0.10  # regex-constrained decoding (schema)
+# ReKV (bounded streaming memory) is installed from source:
+#   https://github.com/Becomebright/ReKV

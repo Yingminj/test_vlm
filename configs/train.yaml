@@ -1,0 +1,49 @@
+# Config for verifier/train/train_sft.py and verifier/eval/evaluate.py
+# Stages A/B/C share `train` defaults and override via `stages.<stage>`.
+
+model:
+  model_id: "Qwen/Qwen2.5-VL-3B-Instruct"
+  load_in_4bit: true
+  bf16: true
+  use_lora: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  freeze_vision: true
+  max_pixels: 200704   # 256 * 28 * 28  -> caps tokens/frame for latency+VRAM
+  min_pixels: 50176    # 64 * 28 * 28
+
+train:
+  train_jsonl: "data/processed/train.jsonl"
+  val_jsonl: "data/processed/val.jsonl"
+  output_dir: "runs/verifier"
+  epochs: 2.0
+  lr: 1.0e-4
+  batch_size: 2
+  grad_accum: 8
+  warmup_ratio: 0.03
+  timing_upweight: 1.0
+  max_length: 8192
+  save_steps: 200
+  logging_steps: 10
+  seed: 0
+
+stages:
+  # Stage A: schema cold-start (tiny, locks output format)
+  a:
+    output_dir: "runs/stage_a"
+    epochs: 1.0
+    lr: 2.0e-4
+    timing_upweight: 1.0
+  # Stage B: per-clip verifier SFT (discriminative skill)
+  b:
+    output_dir: "runs/stage_b"
+    epochs: 2.0
+    lr: 1.0e-4
+    timing_upweight: 1.0
+  # Stage C: streaming/timing SFT (when to fire) -> upweight transition frames
+  c:
+    output_dir: "runs/stage_c"
+    epochs: 2.0
+    lr: 5.0e-5
+    timing_upweight: 4.0
