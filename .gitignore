@@ -8,6 +8,7 @@ venv/
 # data + run artifacts (anchored to repo root so verifier/data/ is NOT ignored)
 /data/
 /runs/
+/qwen/
 /*.jsonl
 !configs/*.yaml
 *.pt

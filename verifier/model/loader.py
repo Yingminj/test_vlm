@@ -6,10 +6,16 @@ short and VRAM allows.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import List, Optional
 
 DEFAULT_MODEL = "Qwen/Qwen2.5-VL-3B-Instruct"
+
+
+def resolve_model_id(cfg: "ModelConfig") -> str:
+    """Allow `VERIFIER_MODEL_ID` (e.g. a local weights dir) to override config."""
+    return os.environ.get("VERIFIER_MODEL_ID", cfg.model_id)
 
 
 @dataclass
@@ -34,7 +40,7 @@ class ModelConfig:
 def load_processor(cfg: ModelConfig):
     from transformers import AutoProcessor
     return AutoProcessor.from_pretrained(
-        cfg.model_id, min_pixels=cfg.min_pixels, max_pixels=cfg.max_pixels,
+        resolve_model_id(cfg), min_pixels=cfg.min_pixels, max_pixels=cfg.max_pixels,
     )
 
 
@@ -53,7 +59,7 @@ def load_model(cfg: ModelConfig, for_training: bool = True):
         )
 
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        cfg.model_id,
+        resolve_model_id(cfg),
         torch_dtype=torch.bfloat16 if cfg.bf16 else torch.float16,
         quantization_config=quant,
         device_map="auto",
