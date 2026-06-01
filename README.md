@@ -70,7 +70,41 @@ bash scripts/train.sh
 bash scripts/eval.sh && cat runs/report.json
 ```
 
-## Using your own data
+## Ingesting long, multi-subtask videos
+If your recordings are **full tasks containing several subtasks** (not pre-cut
+single-subtask clips), use the ingestion toolchain to segment them first:
+
+```
+manifest.jsonl ──ingest_videos──▶ frames/ + segments.jsonl (skeleton)
+segments.jsonl ──(annotate GUI)─▶ segments.jsonl (filled)
+segments.jsonl ──segments_to_demos──▶ demos.jsonl ──build_dataset──▶ shards
+```
+
+1. **Manifest** (`examples/manifest.example.jsonl`): one JSON/line — `video_id`,
+   `video` path, ordered `subtasks` list.
+2. **Ingest** — extract frames + emit an annotation skeleton:
+   ```bash
+   python -m verifier.data.ingest_videos --manifest data/manifest.jsonl \
+       --frames-root data/frames --out data/segments.jsonl --fps 2.0
+   ```
+3. **Annotate** boundaries + transition frames in the GUI (scrub, set
+   START/END/TRANSITION, pick outcome + anomaly, save):
+   ```bash
+   pip install streamlit
+   streamlit run scripts/annotate_app.py -- --segments data/segments.jsonl
+   ```
+   Per subtask you set: `start`/`end` (span) and one `transition` frame —
+   **completion** for a success, **deviation** (+ anomaly) for a real failure.
+4. **Convert** to demos (validates; video-id prefix keeps each video on one side
+   of the train/val split):
+   ```bash
+   python -m verifier.data.segments_to_demos --segments data/segments.jsonl \
+       --out data/demos.jsonl --skip-invalid
+   ```
+5. Then **`build_dataset`** as below (perturbation + semantic-mismatch augment
+   your real successes/failures into the final shards).
+
+## Using your own data (pre-cut single-subtask clips)
 Produce `data/demos.jsonl`, one JSON per line (see `verifier/data/types.py`):
 ```json
 {"demo_id": "ep0007", "subtask": "place the cup on the shelf",

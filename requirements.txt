@@ -17,5 +17,6 @@ datasets>=2.20
 decord>=0.6.0             # faster frame extraction (else falls back to opencv)
 opencv-python>=4.9        # frame extraction fallback
 lm-format-enforcer>=0.10  # regex-constrained decoding (schema)
+streamlit>=1.36           # annotation GUI (scripts/annotate_app.py)
 # ReKV (bounded streaming memory) is installed from source:
 #   https://github.com/Becomebright/ReKV

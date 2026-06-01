@@ -1,0 +1,2 @@
+{"video_id": "vid001", "video": "/abs/path/vid001.mp4", "subtasks": ["open the top drawer", "pick up the red block", "place block in drawer"]}
+{"video_id": "vid002", "video": "/abs/path/vid002.mp4", "subtasks": ["pour water into the bowl", "place the cup on the shelf"]}
