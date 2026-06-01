@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the three SFT stages in sequence (Part B.3). GPU required.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+source "$(dirname "$0")/_env.sh"   # cd repo root + prefer local ./qwen weights
 
 CONFIG=${CONFIG:-configs/train.yaml}
 

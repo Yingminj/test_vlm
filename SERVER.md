@@ -24,6 +24,12 @@ pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pyyaml pillow pytest
 ```
 
 ## Required env for runs
+`scripts/train.sh` and `scripts/eval.sh` source `scripts/_env.sh`, which **auto-uses
+local weights**: if `./qwen` exists it sets `VERIFIER_MODEL_ID` + offline flags +
+`PYTORCH_CUDA_ALLOC_CONF` for you. So `bash scripts/train.sh` will NOT download.
+
+Only set these manually if you run the python entrypoints directly (not via the .sh),
+or your weights live elsewhere:
 ```bash
 export VERIFIER_MODEL_ID=/home/kewei/YING/test_vlm/qwen   # local weights
 export TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1            # weights are local

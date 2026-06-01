@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Evaluate a trained adapter on the val shard (Part B.6). GPU required.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+source "$(dirname "$0")/_env.sh"   # cd repo root + prefer local ./qwen weights
 
 CONFIG=${CONFIG:-configs/train.yaml}
 ADAPTER=${ADAPTER:-runs/stage_c}
