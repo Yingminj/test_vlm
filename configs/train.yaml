@@ -14,9 +14,9 @@ model:
   min_pixels: 50176    # 64 * 28 * 28
 
 train:
-  train_jsonl: "data/processed/train.jsonl"
-  val_jsonl: "data/processed/val.jsonl"
-  output_dir: "runs/verifier"
+  train_jsonl: "data/gift/processed/train.jsonl"
+  val_jsonl: "data/gift/processed/val.jsonl"
+  output_dir: "runs/gift/verifier"
   epochs: 2.0
   lr: 1.0e-4
   batch_size: 1          # validated on 48GB 4090: batch1 + 6 frames -> ~16GB peak
@@ -32,19 +32,19 @@ train:
 stages:
   # Stage A: schema cold-start (tiny, locks output format)
   a:
-    output_dir: "runs/stage_a"
+    output_dir: "runs/gift/stage_a"
     epochs: 1.0
     lr: 2.0e-4
     timing_upweight: 1.0
   # Stage B: per-clip verifier SFT (discriminative skill)
   b:
-    output_dir: "runs/stage_b"
+    output_dir: "runs/gift/stage_b"
     epochs: 2.0
     lr: 1.0e-4
     timing_upweight: 1.0
   # Stage C: streaming/timing SFT (when to fire) -> upweight transition frames
   c:
-    output_dir: "runs/stage_c"
+    output_dir: "runs/gift/stage_c"
     epochs: 2.0
     lr: 5.0e-5
     timing_upweight: 4.0

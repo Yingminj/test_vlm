@@ -9,6 +9,7 @@ venv/
 /data/
 /runs/
 /qwen/
+/qwen3_5_9B
 /*.jsonl
 !configs/*.yaml
 *.pt
@@ -19,3 +20,5 @@ wandb/
 # os
 .DS_Store
 Thumbs.db
+.msc
+.vscode

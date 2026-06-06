@@ -14,4 +14,4 @@ python -m verifier.train.train_sft --config "$CONFIG" --stage b
 echo "[*] Stage C: streaming/timing SFT (transition-upweighted)"
 python -m verifier.train.train_sft --config "$CONFIG" --stage c
 
-echo "[done] adapters in runs/stage_{a,b,c}"
+echo "[done] adapters in runs/gift/stage_{a,b,c}"
