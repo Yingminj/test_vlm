@@ -10,6 +10,7 @@ venv/
 /runs/
 /qwen/
 /qwen3_5_9B
+/marlin-2b
 /*.jsonl
 !configs/*.yaml
 *.pt
@@ -22,3 +23,4 @@ wandb/
 Thumbs.db
 .msc
 .vscode
+.claude
