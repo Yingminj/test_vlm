@@ -79,7 +79,59 @@ class CV2Cam:
         self.cap.release()
 
 
-def open_camera(source, w, h, fps):
+class VideoFileCam:
+    """Replay a video file as if it were a live camera.
+
+    Frames are paced to the file's native fps (x --speed) so the main loop's
+    wall-clock sampling (--sample-fps) and the threaded inference behave exactly
+    as they do on a real stream -- including dropping frames that elapse while the
+    model is busy. At EOF, sets self.eof (the main loop breaks); --loop re-seeks.
+    """
+
+    def __init__(self, path, loop=False, speed=1.0):
+        import cv2
+        self.cap = cv2.VideoCapture(path)
+        if not self.cap.isOpened():
+            raise RuntimeError(f"could not open video file {path!r}")
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
+        self.loop = loop
+        self.speed = max(speed, 1e-6)
+        self.eof = False
+        self._n = 0          # frames emitted since playback start
+        self._t0 = None      # wall-clock anchor for pacing
+
+    def read(self):
+        if self._t0 is None:
+            self._t0 = time.time()
+        ok, frame = self.cap.read()
+        if not ok:
+            if self.loop:
+                import cv2
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                self._n, self._t0 = 0, time.time()
+                ok, frame = self.cap.read()
+            if not ok:
+                self.eof = True
+                return None
+        # sleep so emitted-frame time tracks video time -> ~real-time playback
+        dt = (self._t0 + self._n / (self.fps * self.speed)) - time.time()
+        if dt > 0:
+            time.sleep(dt)
+        self._n += 1
+        return frame  # BGR
+
+    def timestamp(self):
+        """Position of the just-read frame within the video, in seconds."""
+        return max(0.0, (self._n - 1) / self.fps)
+
+    def release(self):
+        self.cap.release()
+
+
+def open_camera(source, w, h, fps, loop=False, speed=1.0):
+    if source not in ("auto", "realsense") and os.path.isfile(source):
+        print(f"[cam] replaying video file: {source} (loop={loop}, speed={speed}x)")
+        return VideoFileCam(source, loop=loop, speed=speed)
     if source in ("auto", "realsense"):
         try:
             import pyrealsense2 as rs
@@ -104,13 +156,20 @@ def main() -> None:
     ap.add_argument("--model", default="marlin-2b", help="path to weights dir")
     ap.add_argument("--mode", choices=["caption", "find"], default="caption")
     ap.add_argument("--event", default="", help="query for find mode")
-    ap.add_argument("--source", default="auto", help="'auto'|'realsense'|webcam index")
+    ap.add_argument("--source", default="auto",
+                    help="'auto'|'realsense'|webcam index|path to a video file")
+    ap.add_argument("--loop", action="store_true",
+                    help="when --source is a video file, restart it at EOF")
+    ap.add_argument("--speed", type=float, default=1.0,
+                    help="video-file playback speed multiplier (1.0 = real time)")
     ap.add_argument("--buffer", type=int, default=16, help="frames sent to the model")
     ap.add_argument("--sample-fps", type=float, default=2.0,
                     help="cadence frames enter the buffer (Marlin trained at 2.0)")
     ap.add_argument("--interval", type=float, default=5.0,
                     help="seconds between automatic runs; 0 = manual only (SPACE)")
     ap.add_argument("--max-new-tokens", type=int, default=512)
+    ap.add_argument("--results-dir", default="results",
+                    help="save each inference to results/<tag>_<time>.txt; '' disables")
     ap.add_argument("--max-side", type=int, default=448,
                     help="downscale frames so longest side <= this (VIDEO_MAX_PIXELS~448)")
     ap.add_argument("--cam-width", type=int, default=640)
@@ -139,9 +198,15 @@ def main() -> None:
 
     lock = threading.Lock()
     buf: Deque = collections.deque(maxlen=args.buffer)
+    ts_buf: Deque = collections.deque(maxlen=args.buffer)  # clip time (s) per frame
     state = {"mode": args.mode, "event": args.event, "out": "(warming up)",
              "latency": 0.0, "paused": args.interval <= 0, "stop": False, "busy": False}
     ask_now = threading.Event()
+
+    writer = (ResultWriter(args.results_dir, f"marlin_{_source_tag(args.source)}")
+              if args.results_dir else None)
+    if writer:
+        print(f"[results] saving to {writer.path}")
 
     def run_model(frames: List, prompt: str, max_new: int) -> str:
         msgs = [{"role": "user", "content": [
@@ -168,10 +233,11 @@ def main() -> None:
             ask_now.clear()
             with lock:
                 snap = list(buf)
+                snap_ts = list(ts_buf)
             if len(snap) < 2:
                 continue
             if len(snap) % 2:
-                snap = snap[1:]
+                snap, snap_ts = snap[1:], snap_ts[1:]
             if mode == "find" and not event.strip():
                 with lock:
                     state["out"] = "[find] press 'e' to set an event query"
@@ -201,19 +267,26 @@ def main() -> None:
             last = time.time()
             with lock:
                 state["out"], state["latency"], state["busy"] = txt, dt, False
+            if writer and snap_ts:
+                writer.write(snap_ts[0], snap_ts[-1], txt, label=mode)
 
     th = threading.Thread(target=worker, daemon=True)
     th.start()
 
-    cam = open_camera(args.source, args.cam_width, args.cam_height, args.cam_fps)
+    cam = open_camera(args.source, args.cam_width, args.cam_height, args.cam_fps,
+                      loop=args.loop, speed=args.speed)
     win = "Marlin-2B live  (q quit | SPACE ask | p pause | m mode | e query)"
     cv2.namedWindow(win, cv2.WINDOW_NORMAL)
     sample_period = 1.0 / max(args.sample_fps, 1e-6)
     last_sample = 0.0
+    t_start = time.time()
     try:
         while True:
             bgr = cam.read()
             if bgr is None:
+                if getattr(cam, "eof", False):
+                    print("[video] end of file")
+                    break
                 continue
             now = time.time()
             if now - last_sample >= sample_period:
@@ -222,8 +295,10 @@ def main() -> None:
                 if max(pil.size) > args.max_side:
                     s = args.max_side / max(pil.size)
                     pil = pil.resize((int(pil.width*s), int(pil.height*s)))
+                ts = cam.timestamp() if hasattr(cam, "timestamp") else (now - t_start)
                 with lock:
                     buf.append(pil)
+                    ts_buf.append(ts)
 
             with lock:
                 out, lat, mode = state["out"], state["latency"], state["mode"]
@@ -274,6 +349,42 @@ def main() -> None:
         cam.release()
         cv2.destroyAllWindows()
         th.join(timeout=2.0)
+        if writer:
+            writer.close()
+            print(f"[results] saved to {writer.path}")
+
+
+def _hms(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    return f"{seconds // 3600:02d}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
+
+
+def _source_tag(source: str) -> str:
+    if os.path.isfile(source):
+        return os.path.splitext(os.path.basename(source))[0]
+    return f"cam_{source}"
+
+
+class ResultWriter:
+    """Append one line per inference: `HH:MM:SS-HH:MM:SS <label>: <text>`.
+
+    One file per run under --results-dir. Times are the span the buffered clip
+    covers (video position for a file, elapsed wall-clock for a camera).
+    """
+
+    def __init__(self, outdir: str, tag: str):
+        os.makedirs(outdir, exist_ok=True)
+        stamp = time.strftime("%Y%m%d_%H%M%S")
+        self.path = os.path.join(outdir, f"{tag}_{stamp}.txt")
+        self._f = open(self.path, "a", encoding="utf-8")
+
+    def write(self, t0: float, t1: float, text: str, label: str = "answer") -> None:
+        oneline = " ".join((text or "").split())   # collapse newlines -> single line
+        self._f.write(f"{_hms(t0)}-{_hms(t1)} {label}: {oneline}\n")
+        self._f.flush()
+
+    def close(self) -> None:
+        self._f.close()
 
 
 def _bar(img, x, y, w, h, alpha=0.45):

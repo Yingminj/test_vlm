@@ -10,6 +10,7 @@ venv/
 /runs/
 /qwen/
 /qwen3_5_9B
+/model
 /marlin-2b
 /*.jsonl
 !configs/*.yaml
@@ -17,6 +18,7 @@ venv/
 *.bin
 *.safetensors
 wandb/
+results/
 
 # os
 .DS_Store

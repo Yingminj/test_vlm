@@ -13,7 +13,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-MODEL=${MODEL:-qwen3_5_9B}
+MODEL=${MODEL:-model/qwen3_5_9B}
 export TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 

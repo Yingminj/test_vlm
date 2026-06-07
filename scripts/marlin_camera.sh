@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-MODEL=${MODEL:-marlin-2b}
+MODEL=${MODEL:-model/marlin-2b}
 export TRANSFORMERS_OFFLINE=1 HF_HUB_OFFLINE=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
