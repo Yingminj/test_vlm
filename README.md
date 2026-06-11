@@ -139,6 +139,31 @@ token" streaming objective (VideoLLM-online LIVE) is documented in
 - `timing`: mean abs error (s), early/late error, and ARS (asymmetric readiness),
 - `latency_s`: p50/p99/mean per check.
 
+## Live demo: gift-packaging verifier (`scripts/gift_camera.sh`)
+A separate live-demo path that runs the fine-tuned **gift_v1** adapter
+(Qwen3.5-VL-9B base + LoRA from the `test_training/` gift_ft repo) on a camera or
+video file. At each check it answers the closed-set gift-packaging state question and
+overlays the parsed `{"state","name"}` (12 classes; class 12 = "rubbish"/reject). It
+is *not* part of the Qwen2.5-VL verifier training pipeline above — it shares only the
+camera/overlay plumbing from `scripts/qwen3_5_camera.py`.
+
+Requires the `vlm` conda env, a GPU, and local weights at `model/qwen3_5_9B` (base)
+and `model/gift_v1` (adapter); override with the `BASE` / `ADAPTER` env vars.
+
+```bash
+conda activate vlm
+bash scripts/gift_camera.sh                              # auto camera, auto-check every 1.5s
+bash scripts/gift_camera.sh --source 0 --interval 0      # webcam 0, manual (SPACE) only
+bash scripts/gift_camera.sh --source clip.mp4 --loop     # replay a recorded clip
+# offline: score a recording against its frame-level GT (no GUI), writes confusion
+# matrix + GT-vs-pred overlay + per-class P/R/F1 + summary.json under results/eval_<tag>/
+bash scripts/gift_camera.sh --source data/test_0605/realsense_20260609_150051.mp4 --eval
+```
+Controls (focus the video window): `q` quit · `SPACE` ask now · `p` pause/resume
+auto-asking. The frame window (`--n-frames` / `--window-seconds` / `--sample-fps`)
+defaults to the gift_ft training shape (6 frames over 3 s, ~2 fps) — keep these in
+sync with the training config or live output gets unstable.
+
 ## Deployment notes
 - Wrap the model in **ReKV** (`verifier/infer/streaming_verifier.py::ReKVMemory`)
   for bounded long-horizon memory; reset memory at subtask boundaries via

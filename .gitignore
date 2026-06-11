@@ -19,6 +19,7 @@ venv/
 *.safetensors
 wandb/
 results/
+/test_training
 
 # os
 .DS_Store
