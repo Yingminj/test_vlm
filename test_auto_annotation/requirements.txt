@@ -1,0 +1,23 @@
+# Pip deps for the local Qwen3.5-VL server, on top of the validated CUDA stack
+# (torch 2.8+cu129 / transformers 5.9 / qwen-vl-utils — already in the `vlm` env).
+#
+# Install via the Tsinghua mirror (plain PyPI is unusably slow on this server):
+#   pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+#
+# If you cloned the `vlm` env you only actually need `fastapi` (everything else
+# is already present); the rest are listed so a from-scratch env is complete.
+
+# --- server ---
+fastapi
+uvicorn>=0.30
+
+# --- model + vision (present in vlm env; pinned for a fresh env) ---
+transformers==5.9.0
+accelerate>=1.13
+qwen-vl-utils>=0.0.14
+bitsandbytes>=0.49      # only for the 27B 4-bit (nf4) path
+opencv-python>=4.9
+pillow>=10.0
+
+# --- client / smoke test ---
+openai>=1.0

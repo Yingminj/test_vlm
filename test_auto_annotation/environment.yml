@@ -1,0 +1,35 @@
+# Fresh isolated conda env for the local Qwen3.5-VL inference server.
+#
+# IMPORTANT — fastest, most reliable path on this server:
+#   The repo's `vlm` env is already validated for these exact weights
+#   (torch 2.8+cu129, transformers 5.9, qwen-vl-utils 0.0.14). Cloning it and
+#   adding fastapi avoids re-resolving the heavy CUDA stack over the slow PyPI:
+#
+#       conda create -n autolabel --clone vlm
+#       conda activate autolabel
+#       pip install -i https://pypi.tuna.tsinghua.edu.cn/simple fastapi
+#
+# Use THIS file only if you want to build the env from scratch (slower). The
+# torch/transformers versions below match the validated stack; install the
+# pip deps via the Tsinghua mirror (see requirements.txt).
+name: autolabel
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - ffmpeg          # video decode/encode used by the client + cv2
+  - pip:
+      - --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+      - --extra-index-url https://download.pytorch.org/whl/cu129
+      - torch==2.8.0
+      - torchvision==0.23.0
+      - transformers==5.9.0
+      - accelerate>=1.13
+      - qwen-vl-utils>=0.0.14
+      - bitsandbytes>=0.49        # only needed for the 27B 4-bit path
+      - fastapi
+      - uvicorn
+      - opencv-python>=4.9
+      - pillow
+      - openai                    # for the client / smoke test
