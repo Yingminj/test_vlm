@@ -1,0 +1,3 @@
+[submodule "vlmtest_training"]
+	path = vlmtest_training
+	url = https://github.com/Yingminj/vlmtest_training.git
