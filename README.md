@@ -141,7 +141,7 @@ token" streaming objective (VideoLLM-online LIVE) is documented in
 
 ## Live demo: gift-packaging verifier (`scripts/gift_camera.sh`)
 A separate live-demo path that runs the fine-tuned **gift_v1** adapter
-(Qwen3.5-VL-9B base + LoRA from the `test_training/` gift_ft repo) on a camera or
+(Qwen3.5-VL-9B base + LoRA from the `vlmtest_training/` gift_ft repo) on a camera or
 video file. At each check it answers the closed-set gift-packaging state question and
 overlays the parsed `{"state","name"}` (12 classes; class 12 = "rubbish"/reject). It
 is *not* part of the Qwen2.5-VL verifier training pipeline above — it shares only the
@@ -163,6 +163,40 @@ Controls (focus the video window): `q` quit · `SPACE` ask now · `p` pause/resu
 auto-asking. The frame window (`--n-frames` / `--window-seconds` / `--sample-fps`)
 defaults to the gift_ft training shape (6 frames over 3 s, ~2 fps) — keep these in
 sync with the training config or live output gets unstable.
+
+## `vlmtest_training/` — gift_ft LoRA fine-tuning repo (submodule)
+A self-contained sibling repo (git submodule, `Yingminj/vlmtest_training`) that LoRA
+fine-tunes **Qwen3.5-VL-9B** into the real-time **gift-packaging state verifier** whose
+`gift_v1` adapter the live demo above runs. Given the most recent video frames it emits
+`{"state": <id>, "name": "<name>"}`, one of **12 classes** (C1–C11 task phases +
+C12 `rubbish` = irrelevant/reject frame). It is **independent** of the Qwen2.5-VL
+verifier pipeline in this repo — it does not reuse `verifier/` and changes nothing in the
+Qwen architecture (LoRA only). Its own `README.md` / `CLAUDE.md` are the source of truth.
+
+```
+videos+labels ── build_data ──▶ train/val.jsonl ── train ──▶ LoRA adapter ──▶ infer / eval
+```
+
+Design highlights (full rationale in `vlmtest_training/README.md`):
+- **LoRA on the LLM only, vision tower frozen** (`q/k/v/o` + MLP, `r=16, α=32`); open the
+  vision→LLM merger only if accuracy plateaus.
+- **Tiny closed JSON schema + answer-only loss**, greedy decode + regex parse —
+  `ontology.py` is the single source of truth for the 12 classes, prompt, and parser.
+- **Label engineering**: drop the unlabeled gap (`0`), keep an explicit reject class (`12`),
+  median-smooth per-frame labels, oversample short transition phases (3/7/9), and
+  downsample static plateaus (2/8/11) while keeping the **real distribution in val**.
+- **Causal, leak-free sliding window** (`n_frames=6` over `window_seconds=3.0`, ≈2 fps),
+  split **by video**; the identical sampler is used by build, train, infer, and eval.
+
+Pulled in as a submodule — init it before use:
+```bash
+git submodule update --init vlmtest_training
+cd vlmtest_training && bash setup_env.sh   # conda env "gift_ft"; or CONDA_ENV=vlm bash setup_env.sh
+PYTHONPATH=src python -m pytest -q          # CPU sanity (no GPU/model needed)
+bash scripts/build_data.sh                  # videos+labels -> data/processed/{train,val}.jsonl
+bash scripts/train.sh                       # LoRA SFT -> runs/gift_v1
+ADAPTER=runs/gift_v1 bash scripts/eval.sh   # per-class P/R/F1 -> runs/report.json
+```
 
 ## Deployment notes
 - Wrap the model in **ReKV** (`verifier/infer/streaming_verifier.py::ReKVMemory`)
