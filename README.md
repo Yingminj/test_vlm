@@ -217,3 +217,26 @@ ADAPTER=runs/gift_v1 bash scripts/eval.sh   # per-class P/R/F1 -> runs/report.js
 
 See `streaming-vlm-verifier.md` and `task-state-monitor-design.md` (in the paper
 archive) for the full rationale and the streaming-VLM literature map.
+
+## License
+
+This project is released under the [Apache License 2.0](./LICENSE), following
+the upstream Qwen3.5-VL model license. The verifier backbone
+(**Qwen2.5-VL-3B**) and the live-demo base (**Qwen3.5-VL-9B**) are also Apache
+2.0 (Copyright 2026 Alibaba Cloud); their weights live under `qwen/` and
+`qwen3_5_9B/` respectively and are governed by their own bundled `LICENSE`
+files.
+
+## Citation
+
+If you find our work helpful, feel free to give us a cite.
+
+```bibtex
+@misc{qwen3.5,
+    title  = {{Qwen3.5}: Towards Native Multimodal Agents},
+    author = {{Qwen Team}},
+    month  = {February},
+    year   = {2026},
+    url    = {https://qwen.ai/blog?id=qwen3.5}
+}
+```
